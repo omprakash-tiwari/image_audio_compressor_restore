@@ -1,1 +1,165 @@
-task
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Compressor - Sender & Receiver</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎵 Audio Compression & Restoration System</h1>
+            <p>Compress audio efficiently and restore with high accuracy</p>
+        </header>
+
+        <div class="main-content">
+            <!-- SENDER SIDE -->
+            <section class="panel sender-panel">
+                <h2>📤 SENDER SIDE</h2>
+                <div class="panel-content">
+                    <!-- Upload Section -->
+                    <div class="section">
+                        <h3>1. Upload Audio</h3>
+                        <div class="upload-area" id="uploadArea">
+                            <input type="file" id="audioFile" accept=".wav,.mp3" style="display: none;">
+                            <div class="upload-placeholder">
+                                <p>📁 Click to upload or drag audio file</p>
+                                <small>Supports WAV and MP3</small>
+                            </div>
+                        </div>
+                        <div id="fileInfo" class="info-box" style="display: none;">
+                            <p><strong>File:</strong> <span id="fileName"></span></p>
+                            <p><strong>Duration:</strong> <span id="fileDuration"></span>s</p>
+                            <p><strong>Sample Rate:</strong> <span id="fileSampleRate"></span> Hz</p>
+                            <p><strong>Samples:</strong> <span id="fileSamples"></span></p>
+                        </div>
+                    </div>
+
+                    <!-- Original Audio Visualization -->
+                    <div class="section">
+                        <h3>2. Original Audio Spectrum</h3>
+                        <canvas id="originalSpectrumChart"></canvas>
+                        <button id="playOriginalBtn" class="btn btn-primary" style="display: none;">
+                            ▶️ Play Original
+                        </button>
+                        <button id="downloadOriginalBtn" class="btn btn-secondary" style="display: none;">
+                            ⬇️ Download Original
+                        </button>
+                    </div>
+
+                    <!-- Compression Settings -->
+                    <div class="section">
+                        <h3>3. Compression Settings</h3>
+                        <label for="compressionSlider">Compression Ratio: <span id="compressionValue">50</span>%</label>
+                        <input type="range" id="compressionSlider" min="10" max="90" value="50" class="slider">
+                        <small>Lower value = more compression (more data removed)</small>
+                        <button id="compressBtn" class="btn btn-success" style="display: none;">
+                            🔐 Compress Audio
+                        </button>
+                    </div>
+
+                    <!-- Compression Results -->
+                    <div id="compressionResults" class="section" style="display: none;">
+                        <h3>4. Compression Results</h3>
+                        <div class="results-grid">
+                            <div class="result-card">
+                                <h4>Original Size</h4>
+                                <p id="originalSize" class="metric">0 KB</p>
+                            </div>
+                            <div class="result-card">
+                                <h4>Compressed Size</h4>
+                                <p id="compressedSize" class="metric">0 KB</p>
+                            </div>
+                            <div class="result-card">
+                                <h4>Compression Ratio</h4>
+                                <p id="compressionRatio" class="metric">0%</p>
+                            </div>
+                            <div class="result-card">
+                                <h4>Data Removed</h4>
+                                <p id="dataRemoved" class="metric">0 samples</p>
+                            </div>
+                        </div>
+                        <canvas id="compressionComparisonChart"></canvas>
+                        <button id="downloadCompressedBtn" class="btn btn-secondary">
+                            ⬇️ Download Compressed
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RECEIVER SIDE -->
+            <section class="panel receiver-panel">
+                <h2>📥 RECEIVER SIDE</h2>
+                <div class="panel-content">
+                    <!-- Compression Visualization -->
+                    <div class="section">
+                        <h3>1. Compressed Audio Spectrum</h3>
+                        <canvas id="compressedSpectrumChart"></canvas>
+                    </div>
+
+                    <!-- Restoration -->
+                    <div class="section">
+                        <h3>2. Audio Restoration</h3>
+                        <button id="restoreBtn" class="btn btn-warning" style="display: none;">
+                            🔓 Restore Audio
+                        </button>
+                    </div>
+
+                    <!-- Restored Audio Visualization -->
+                    <div id="restorationResults" class="section" style="display: none;">
+                        <h3>3. Restored Audio</h3>
+                        <canvas id="restoredSpectrumChart"></canvas>
+                        <button id="playRestoredBtn" class="btn btn-primary">
+                            ▶️ Play Restored
+                        </button>
+                        <button id="downloadRestoredBtn" class="btn btn-secondary">
+                            ⬇️ Download Restored
+                        </button>
+                    </div>
+
+                    <!-- Comparison Section -->
+                    <div id="comparisonSection" class="section" style="display: none;">
+                        <h3>4. Audio Comparison Analysis</h3>
+                        <div class="comparison-grid">
+                            <div class="comparison-card">
+                                <h4>Compression Accuracy</h4>
+                                <p id="compressionAccuracy" class="metric metric-large">0%</p>
+                                <small>Original vs Compressed</small>
+                            </div>
+                            <div class="comparison-card">
+                                <h4>Restoration Accuracy</h4>
+                                <p id="restorationAccuracy" class="metric metric-large">0%</p>
+                                <small>Original vs Restored</small>
+                            </div>
+                            <div class="comparison-card">
+                                <h4>RMSE (Compression)</h4>
+                                <p id="compressionRMSE" class="metric">0</p>
+                                <small>Error Rate</small>
+                            </div>
+                            <div class="comparison-card">
+                                <h4>RMSE (Restoration)</h4>
+                                <p id="restorationRMSE" class="metric">0</p>
+                                <small>Error Rate</small>
+                            </div>
+                        </div>
+
+                        <div class="chart-container">
+                            <h4>Spectrum Comparison</h4>
+                            <canvas id="comparisonChart"></canvas>
+                        </div>
+
+                        <div class="chart-container">
+                            <h4>Energy Analysis</h4>
+                            <canvas id="energyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
