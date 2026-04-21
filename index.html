@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ImageTransmit — SVD Compression Simulator</title>
+<meta name="description" content="SVD-based image compression and transmission simulator with PSNR, SSIM and accuracy metrics.">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#050b1a;--s:rgba(255,255,255,.04);--s2:rgba(255,255,255,.07);--b:rgba(255,255,255,.08);--b2:rgba(255,255,255,.14);--t:#e8eaf6;--td:rgba(232,234,246,.65);--tm:rgba(232,234,246,.38);--cy:#00d4ff;--cyd:rgba(0,212,255,.13);--cyg:rgba(0,212,255,.26);--pu:#a855f7;--pud:rgba(168,85,247,.13);--pug:rgba(168,85,247,.26);--gn:#22c55e;--am:#f59e0b;--rd:#ef4444;--r:16px}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--t);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 15% 15%,rgba(0,212,255,.07) 0%,transparent 60%),radial-gradient(ellipse 60% 60% at 85% 85%,rgba(168,85,247,.07) 0%,transparent 60%);pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.05) 1px,transparent 1px);background-size:30px 30px;pointer-events:none;z-index:0}
+header{position:relative;z-index:10;padding:16px 36px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--b);backdrop-filter:blur(20px);background:rgba(5,11,26,.85)}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-icon{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--cy),var(--pu));display:flex;align-items:center;justify-content:center;font-size:19px}
+.logo h1{font-size:1.3rem;font-weight:800;background:linear-gradient(135deg,var(--cy),var(--pu));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.logo span{font-size:.7rem;color:var(--tm);display:block}
+.hb{display:flex;gap:8px}
+.badge{padding:3px 10px;border-radius:20px;font-size:.65rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.bc{background:var(--cyd);color:var(--cy);border:1px solid var(--cyg)}
+.bp{background:var(--pud);color:var(--pu);border:1px solid var(--pug)}
+main{position:relative;z-index:1;display:grid;grid-template-columns:1fr 96px 1fr;min-height:calc(100vh - 73px)}
+.panel{padding:24px 22px;display:flex;flex-direction:column;gap:18px;overflow-y:auto}
+.sp{border-right:1px solid var(--b)}.rp{border-left:1px solid var(--b)}
+.ph{display:flex;align-items:center;gap:10px}
+.phi{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.sp .phi{background:var(--cyd);border:1px solid var(--cyg)}.rp .phi{background:var(--pud);border:1px solid var(--pug)}
+.ph h2{font-size:.98rem;font-weight:700}.sp .ph h2{color:var(--cy)}.rp .ph h2{color:var(--pu)}
+.ph .tag{margin-left:auto;font-size:.6rem;color:var(--tm);font-family:'JetBrains Mono',monospace}
+.step{border:1px solid var(--b);border-radius:var(--r);background:var(--s);transition:border-color .3s,box-shadow .3s}
+.step.active{border-color:var(--cyg);box-shadow:0 0 16px rgba(0,212,255,.09)}
+.rp .step.active{border-color:var(--pug);box-shadow:0 0 16px rgba(168,85,247,.09)}
+.step.done{border-color:rgba(34,197,94,.28)}
+.sh{padding:12px 14px;display:flex;align-items:center;gap:9px}
+.sn{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;flex-shrink:0}
+.sp .sn{background:var(--cyd);color:var(--cy)}.rp .sn{background:var(--pud);color:var(--pu)}
+.sh h3{font-size:.8rem;font-weight:600}
+.sst{margin-left:auto;font-size:.63rem;padding:2px 8px;border-radius:10px;font-weight:600}
+.sp2{background:rgba(255,255,255,.05);color:var(--tm)}.sa{background:var(--cyd);color:var(--cy);animation:pg 1.5s ease-in-out infinite}
+.rp .sa{background:var(--pud);color:var(--pu)}.sd{background:rgba(34,197,94,.13);color:var(--gn)}
+@keyframes pg{0%,100%{opacity:1}50%{opacity:.55}}
+.sb{padding:0 14px 14px}
+.drop{border:2px dashed var(--b2);border-radius:11px;padding:26px 14px;text-align:center;cursor:pointer;transition:all .3s;position:relative;overflow:hidden}
+.drop:hover,.drop.over{border-color:var(--cy);background:var(--cyd)}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.drop .di{font-size:2rem;display:block;margin-bottom:9px}.drop p{color:var(--td);font-size:.82rem}.drop .dh{font-size:.67rem;color:var(--tm);margin-top:4px}
+.iprev{position:relative;border-radius:9px;overflow:hidden;background:rgba(0,0,0,.35);margin-top:9px}
+.iprev canvas{width:100%;height:220px;object-fit:contain;display:block}
+.iov{position:absolute;bottom:0;left:0;right:0;padding:9px;background:linear-gradient(to top,rgba(0,0,0,.8),transparent);display:flex;gap:5px;flex-wrap:wrap}
+.itag{font-size:.62rem;font-family:'JetBrains Mono',monospace;background:rgba(0,0,0,.6);padding:2px 6px;border-radius:3px;color:var(--td)}
+.cl{font-size:.76rem;font-weight:600;color:var(--td);display:flex;justify-content:space-between;margin-bottom:6px}
+.cl span{color:var(--cy);font-family:'JetBrains Mono',monospace}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.fb{padding:7px 10px;border-radius:7px;border:1px solid var(--b);background:var(--s);color:var(--td);font-family:'Outfit',sans-serif;font-size:.74rem;cursor:pointer;transition:all .2s;text-align:center}
+.fb:hover{border-color:var(--cyg);color:var(--t)}.fb.active{background:var(--cyd);border-color:var(--cy);color:var(--cy);font-weight:600}
+.rp .fb.active{background:var(--pud);border-color:var(--pu);color:var(--pu)}
+.qslide{-webkit-appearance:none;appearance:none;width:100%;height:5px;border-radius:3px;background:linear-gradient(to right,var(--rd),var(--am),var(--gn));outline:none;cursor:pointer;margin:7px 0}
+.qslide::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid var(--cy);box-shadow:0 2px 8px rgba(0,0,0,.4);cursor:pointer}
+.ql{display:flex;justify-content:space-between;font-size:.63rem;color:var(--tm)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 16px;border-radius:9px;border:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:.85rem;font-weight:600;transition:all .2s;width:100%}
+.btn:disabled{opacity:.36;cursor:not-allowed}
+.bc2{background:linear-gradient(135deg,var(--cy),#0095bb);color:#000;box-shadow:0 4px 16px rgba(0,212,255,.27)}
+.bc2:hover:not(:disabled){box-shadow:0 6px 26px rgba(0,212,255,.44);transform:translateY(-1px)}
+.bp2{background:linear-gradient(135deg,var(--pu),#7c3aed);color:#fff;box-shadow:0 4px 16px rgba(168,85,247,.27)}
+.bp2:hover:not(:disabled){box-shadow:0 6px 26px rgba(168,85,247,.44);transform:translateY(-1px)}
+.bdl{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.28);color:var(--gn)}.bdl:hover:not(:disabled){background:rgba(34,197,94,.22)}
+.bcmp{background:linear-gradient(135deg,rgba(0,212,255,.17),rgba(168,85,247,.17));border:1px solid var(--b2);color:var(--t)}.bcmp:hover:not(:disabled){background:linear-gradient(135deg,rgba(0,212,255,.27),rgba(168,85,247,.27));transform:translateY(-1px)}
+.mt{margin-top:9px}.mt6{margin-top:6px}
+/* METRICS */
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
+.mgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:11px}
+.mc{background:var(--s);border:1px solid var(--b);border-radius:10px;padding:11px;text-align:center;transition:all .3s}
+.mc.hl{border-color:var(--cyg);background:var(--cyd)}.rp .mc.hl{border-color:var(--pug);background:var(--pud)}
+.mv{font-size:1.3rem;font-weight:800;font-family:'JetBrains Mono',monospace;background:linear-gradient(135deg,var(--cy),var(--pu));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.mvsm{font-size:1rem}.ml{font-size:.63rem;color:var(--tm);margin-top:2px;font-weight:500}.mu{font-size:.67rem;color:var(--td)}
+.acc-big{font-size:1.1rem;font-weight:800;font-family:'JetBrains Mono',monospace}
+.qlabel{font-size:.64rem;padding:2px 7px;border-radius:10px;font-weight:700;display:inline-block;margin-top:3px}
+.ql-ex{background:rgba(34,197,94,.14);color:var(--gn)}.ql-gd{background:rgba(0,212,255,.13);color:var(--cy)}.ql-fr{background:rgba(245,158,11,.14);color:var(--am)}.ql-pr{background:rgba(239,68,68,.13);color:var(--rd)}
+/* DIVIDER */
+.divider{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.spipe{position:relative;width:2px;flex:1;background:var(--b);overflow:hidden;border-radius:2px}
+.spipe::after{content:'';position:absolute;top:-60px;left:0;right:0;height:60px;background:linear-gradient(to bottom,transparent,var(--cy),var(--pu),transparent);animation:sf 2s linear infinite;opacity:0;transition:opacity .5s}
+.spipe.on::after{opacity:1}
+@keyframes sf{from{top:-60px}to{top:100%}}
+.tico{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--cyd),var(--pud));border:2px solid var(--b);display:flex;align-items:center;justify-content:center;font-size:17px;transition:all .3s}
+.tico.spin{animation:tg .8s ease-in-out infinite}
+@keyframes tg{0%,100%{box-shadow:0 0 10px var(--cyg)}50%{box-shadow:0 0 28px var(--cyg),0 0 50px var(--cyg)}}
+.tlabel{font-size:.58rem;color:var(--tm);text-align:center;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.pbc{background:var(--s);border-radius:4px;height:5px;overflow:hidden;margin-bottom:8px}
+.pb{height:100%;border-radius:4px;background:linear-gradient(to right,var(--cy),var(--pu));transition:width .4s ease;width:0%}
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--s2);border:1px solid var(--b2);backdrop-filter:blur(20px);border-radius:11px;padding:12px 16px;display:flex;align-items:center;gap:8px;font-size:.8rem;z-index:1000;transform:translateY(100px);opacity:0;transition:all .3s;max-width:360px}
+.toast.show{transform:translateY(0);opacity:1}
+.tok{border-color:rgba(34,197,94,.38)}.terr{border-color:rgba(239,68,68,.38)}.tinf{border-color:rgba(0,212,255,.38)}
+/* SCAN */
+.scan-wrap{position:relative;border-radius:9px;overflow:hidden}
+.scan-wrap canvas{width:100%;height:220px;display:block}
+#alog{background:rgba(0,0,0,.45);border-radius:7px;padding:9px;font-family:'JetBrains Mono',monospace;font-size:.64rem;color:var(--gn);max-height:72px;overflow-y:auto;line-height:1.85;margin-top:7px}
+/* SPECTRUM */
+.spec-lbl{font-size:.7rem;color:var(--tm);margin-bottom:4px;margin-top:7px}
+#specCvs{width:100%;height:75px;border-radius:7px;background:rgba(0,0,0,.4);display:block}
+.info-row{display:flex;justify-content:space-between;font-size:.63rem;color:var(--tm);margin-top:4px}
+/* RX WAIT */
+.rxwait{text-align:center;padding:26px;color:var(--tm)}.rxwait .wi{font-size:1.9rem;margin-bottom:7px}.rxwait p{font-size:.8rem}
+/* COMPARISON */
+#cmpSec{display:none;position:relative;z-index:1;padding:36px 28px;border-top:1px solid var(--b)}
+#cmpSec.show{display:block}
+.cmpt{text-align:center;margin-bottom:26px}
+.cmpt h2{font-size:1.6rem;font-weight:800;background:linear-gradient(135deg,var(--cy),var(--pu));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.cmpt p{color:var(--tm);margin-top:5px;font-size:.84rem}
+.ovg{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+.ovc{background:var(--s);border:1px solid var(--b);border-radius:11px;padding:16px;text-align:center}
+.ovv{font-size:1.75rem;font-weight:900;font-family:'JetBrains Mono',monospace}
+.ovl{font-size:.64rem;color:var(--tm);text-transform:uppercase;letter-spacing:.05em;margin-top:3px}
+.tc{color:var(--cy)}.tp{color:var(--pu)}.tg{color:var(--gn)}.ta{color:var(--am)}
+.cimgs{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:32px}
+.cic{background:var(--s);border:1px solid var(--b);border-radius:var(--r);overflow:hidden;transition:all .3s}
+.cic:hover{border-color:var(--b2);transform:translateY(-2px)}
+.cic canvas{width:100%;height:190px;object-fit:contain;display:block;background:rgba(0,0,0,.3)}
+.cicf{padding:12px}
+.cicf h3{font-size:.84rem;font-weight:700;margin-bottom:7px}
+.cmrow{display:flex;justify-content:space-between;font-size:.7rem;margin-bottom:4px}
+.cmrow span:first-child{color:var(--tm)}.cmrow span:last-child{font-family:'JetBrains Mono',monospace;font-weight:600}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:32px}
+.cc{background:var(--s);border:1px solid var(--b);border-radius:var(--r);padding:20px}
+.cc h3{font-size:.79rem;font-weight:700;color:var(--td);text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px}
+.cw{position:relative;height:200px}
+.dlrow{display:flex;justify-content:center;gap:12px;margin-top:32px;flex-wrap:wrap}
+.dlrow .btn{width:auto}
+.spinner{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hidden{display:none!important}
+.note{font-size:.67rem;color:var(--am);margin-top:5px;text-align:center}
+@media(max-width:1080px){main{grid-template-columns:1fr;grid-template-rows:auto 76px auto}.divider{flex-direction:row;padding:0 18px;border-top:1px solid var(--b);border-bottom:1px solid var(--b)}.spipe{flex:1;width:auto;height:2px}.sp{border-right:none}.rp{border-left:none}.cimgs,.cgrid,.ovg{grid-template-columns:1fr 1fr}}
+@media(max-width:680px){.cimgs,.cgrid,.ovg{grid-template-columns:1fr}header{flex-direction:column;gap:9px;padding:12px 18px}.hb{flex-wrap:wrap;justify-content:center}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">📡</div>
+    <div>
+      <h1>ImageTransmit</h1>
+      <span>SVD Compression &amp; Transmission Simulator</span>
+    </div>
+  </div>
+  <div class="hb">
+    <span class="badge bc">SVD + YCbCr</span>
+    <span class="badge bp">PSNR · SSIM · Accuracy</span>
+  </div>
+</header>
+
+<main>
+<!-- ══════════ SENDER ══════════ -->
+<section class="panel sp">
+  <div class="ph"><div class="phi">📤</div><h2>Sender Node</h2><span class="tag">ORIGIN</span></div>
+
+  <!-- Step 1 Upload -->
+  <div class="step active" id="s1">
+    <div class="sh"><div class="sn">1</div><h3>Upload Image</h3><span class="sst sa" id="st1">● Waiting</span></div>
+    <div class="sb">
+      <div class="drop" id="dropZ">
+        <span class="di">🖼️</span>
+        <p>Drop image here or click to browse</p>
+        <p class="dh">PNG · JPG · WEBP · max 10MB · auto‑resized to 512×512</p>
+        <input type="file" id="fileIn" accept="image/*">
+      </div>
+      <div class="hidden" id="origPrev">
+        <div class="iprev"><canvas id="origCvs" height="220"></canvas>
+          <div class="iov"><span class="itag" id="oDim">—</span><span class="itag" id="oRaw">—</span><span class="itag" id="oFile">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 Filter (visualization only) -->
+  <div class="step" id="s2">
+    <div class="sh"><div class="sn">2</div><h3>Visualization Filter</h3><span class="sst sp2" id="st2">Pending</span></div>
+    <div class="sb">
+      <div class="cl">Preview filter — <span>does NOT affect compression quality</span></div>
+      <div class="fgrid">
+        <button class="fb active" data-f="none" onclick="pickFilt(this)">🎨 Original</button>
+        <button class="fb" data-f="edge" onclick="pickFilt(this)">🔲 Edge Detect</button>
+        <button class="fb" data-f="sharpen" onclick="pickFilt(this)">✨ Sharpen Preview</button>
+        <button class="fb" data-f="blur" onclick="pickFilt(this)">🌫️ Blur Preview</button>
+      </div>
+      <div class="hidden" id="filtPrev">
+        <div class="iprev mt6"><canvas id="filtCvs" height="220"></canvas>
+          <div class="iov"><span class="itag" id="filtTag">—</span><span class="itag" style="color:var(--am)">Visualization only</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 Scan -->
+  <div class="step" id="s3">
+    <div class="sh"><div class="sn">3</div><h3>Scan &amp; Analyze</h3><span class="sst sp2" id="st3">Pending</span></div>
+    <div class="sb">
+      <div class="scan-wrap hidden" id="scanW">
+        <canvas id="scanCvs" height="220"></canvas>
+      </div>
+      <div id="alog" class="hidden"></div>
+      <button class="btn bc2 mt" id="scanBtn" disabled onclick="doScan()">🔍 Scan &amp; Analyze</button>
+    </div>
+  </div>
+
+  <!-- Step 4 Compress -->
+  <div class="step" id="s4">
+    <div class="sh"><div class="sn">4</div><h3>SVD Compression</h3><span class="sst sp2" id="st4">Pending</span></div>
+    <div class="sb">
+      <div class="cl">SVD Rank / Quality <span id="qval">50%</span></div>
+      <input type="range" class="qslide" id="qslide" min="5" max="95" value="50" oninput="onQ(this)">
+      <div class="ql"><span>High Compression</span><span>High Quality</span></div>
+      <button class="btn bc2 mt" id="compBtn" disabled onclick="doCompress()">⚡ Compress (SVD)</button>
+
+      <div class="hidden" id="compPrev">
+        <div class="iprev mt6"><canvas id="compCvs" height="220"></canvas>
+          <div class="iov"><span class="itag" id="cSzTag">—</span><span class="itag" id="cRatTag">—</span><span class="itag" id="cPsnrTag">—</span></div>
+        </div>
+
+        <div class="spec-lbl">SVD Singular Value Spectrum (luma channel)</div>
+        <canvas id="specCvs" height="75"></canvas>
+
+        <!-- 6-cell metric grid -->
+        <div class="mgrid3">
+          <div class="mc hl"><div class="mv mvsm" id="cPSNR">—</div><div class="ml">PSNR <span class="mu">(dB)</span></div><div id="cpql"></div></div>
+          <div class="mc hl"><div class="mv mvsm" id="cSSIM">—</div><div class="ml">SSIM Index</div><div id="csql"></div></div>
+          <div class="mc hl"><div class="mv mvsm acc-big" id="cAcc">—</div><div class="ml">Accuracy %</div></div>
+        </div>
+        <div class="mgrid">
+          <div class="mc"><div class="mv mvsm" id="cMSE">—</div><div class="ml">MSE (mean sq. error)</div></div>
+          <div class="mc"><div class="mv mvsm" id="cRatio">—</div><div class="ml">Compression Ratio</div></div>
+          <div class="mc"><div class="mv mvsm" id="cSaved">—</div><div class="ml">Space Saved</div></div>
+          <div class="mc"><div class="mv mvsm" id="cRank">—</div><div class="ml">SVD Rank (Y / C)</div></div>
+        </div>
+        <div class="info-row"><span>Processing time:</span><span id="compTime" style="font-family:'JetBrains Mono',monospace">—</span></div>
+        <button class="btn bdl mt6" onclick="dlImg('comp')">⬇️ Download Compressed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 5 Send -->
+  <div class="step" id="s5">
+    <div class="sh"><div class="sn">5</div><h3>Transmit Data</h3><span class="sst sp2" id="st5">Pending</span></div>
+    <div class="sb">
+      <div class="pbc"><div class="pb" id="txBar"></div></div>
+      <button class="btn bc2" id="sendBtn" disabled onclick="doSend()">📡 Send to Receiver →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ DIVIDER ══════════ -->
+<div class="divider">
+  <div class="spipe" id="sp1"></div>
+  <div class="tico" id="ticon">📡</div>
+  <div class="tlabel">Network<br>Channel</div>
+  <div class="spipe" id="sp2"></div>
+</div>
+
+<!-- ══════════ RECEIVER ══════════ -->
+<section class="panel rp">
+  <div class="ph"><div class="phi">📥</div><h2>Receiver Node</h2><span class="tag">DESTINATION</span></div>
+
+  <!-- Rx1 Receive -->
+  <div class="step" id="r1">
+    <div class="sh"><div class="sn">1</div><h3>Receive Compressed Data</h3><span class="sst sp2" id="rst1">Waiting</span></div>
+    <div class="sb">
+      <div class="rxwait" id="rxW"><div class="wi">📭</div><p>Awaiting transmission from sender…</p></div>
+      <div class="hidden" id="rxPrev">
+        <div class="iprev"><canvas id="rxCvs" height="220"></canvas>
+          <div class="iov"><span class="itag" id="rxSzTag">—</span><span class="itag" id="rxRatTag">—</span></div>
+        </div>
+        <div class="mgrid3">
+          <div class="mc hl"><div class="mv mvsm" id="rxPSNR">—</div><div class="ml">Compression PSNR <span class="mu">(dB)</span></div><div id="rxpql"></div></div>
+          <div class="mc hl"><div class="mv mvsm" id="rxSSIM">—</div><div class="ml">Compression SSIM</div><div id="rxsql"></div></div>
+          <div class="mc hl"><div class="mv mvsm acc-big" id="rxAcc">—</div><div class="ml">Accuracy %</div></div>
+        </div>
+        <div class="mgrid">
+          <div class="mc"><div class="mv mvsm" id="rxMSE">—</div><div class="ml">MSE</div></div>
+          <div class="mc"><div class="mv mvsm" id="rxRatio">—</div><div class="ml">Compression Ratio</div></div>
+        </div>
+        <p class="note">↑ Compression accuracy vs. original image</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rx2 Restore -->
+  <div class="step" id="r2">
+    <div class="sh"><div class="sn">2</div><h3>Restore Image</h3><span class="sst sp2" id="rst2">Pending</span></div>
+    <div class="sb">
+      <div class="cl">Post-processing enhancement</div>
+      <div class="fgrid">
+        <button class="fb" data-r="none" onclick="pickRestore(this)">🎨 None</button>
+        <button class="fb" data-r="histmatch" onclick="pickRestore(this)">📊 Histogram Match</button>
+        <button class="fb active" data-r="residual" onclick="pickRestore(this)">📡 Residual Correction</button>
+        <button class="fb" data-r="full" onclick="pickRestore(this)">⚡ Full Restoration</button>
+      </div>
+      <button class="btn bp2 mt" id="restBtn" disabled onclick="doRestore()">🔄 Restore Image</button>
+      <div class="hidden" id="restPrev">
+        <div class="iprev mt6"><canvas id="restCvs" height="220"></canvas>
+          <div class="iov"><span class="itag">Post-processed</span></div>
+        </div>
+        <div class="mgrid3">
+          <div class="mc hl"><div class="mv mvsm" id="rPSNR">—</div><div class="ml">Restored PSNR <span class="mu">(dB)</span></div><div id="rpql"></div></div>
+          <div class="mc hl"><div class="mv mvsm" id="rSSIM">—</div><div class="ml">Restored SSIM</div><div id="rsql"></div></div>
+          <div class="mc hl"><div class="mv mvsm acc-big" id="rAcc">—</div><div class="ml">Accuracy %</div></div>
+        </div>
+        <div class="mgrid">
+          <div class="mc"><div class="mv mvsm" id="rMSE">—</div><div class="ml">MSE</div></div>
+          <div class="mc"><div class="mv mvsm" id="rPg">—</div><div class="ml">PSNR Gain <span class="mu">(dB)</span></div></div>
+          <div class="mc"><div class="mv mvsm" id="rSg">—</div><div class="ml">SSIM Gain</div></div>
+          <div class="mc"><div class="mv mvsm" id="rAg">—</div><div class="ml">Accuracy Gain</div></div>
+        </div>
+        <div class="mc" style="margin-top:8px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3)"><div class="mv mvsm tg" id="rRecovery">—</div><div class="ml">📊 Reconstruction Error Recovered <span class="mu">(vs compressed)</span></div></div>
+        <p class="note">↑ Restoration accuracy vs. original image</p>
+        <p class="note" style="color:var(--td);margin-top:2px">Accuracy = 50% SSIM + 50% Pixel Fidelity (RMSE-based)</p>
+        <button class="btn bdl mt6" onclick="dlImg('rest')">⬇️ Download Restored</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rx3 Compare -->
+  <div class="step" id="r3">
+    <div class="sh"><div class="sn">3</div><h3>Compare &amp; Analyze</h3><span class="sst sp2" id="rst3">Pending</span></div>
+    <div class="sb">
+      <button class="btn bcmp" id="cmpBtn" disabled onclick="showCmp()">📊 View Full Comparison &amp; Charts</button>
+    </div>
+  </div>
+</section>
+</main>
+
+<!-- ══════════ COMPARISON ══════════ -->
+<section id="cmpSec">
+  <div class="cmpt">
+    <h2>📊 Image Quality Analysis</h2>
+    <p>Side‑by‑side comparison · PSNR · SSIM · Accuracy % · Compression metrics</p>
+  </div>
+  <div class="ovg">
+    <div class="ovc"><div class="ovv tc" id="ov1">—</div><div class="ovl">Compressed PSNR (dB)</div></div>
+    <div class="ovc"><div class="ovv tp" id="ov2">—</div><div class="ovl">Restored PSNR (dB)</div></div>
+    <div class="ovc"><div class="ovv tg" id="ov3">—</div><div class="ovl">Compression Ratio</div></div>
+    <div class="ovc"><div class="ovv ta" id="ov4">—</div><div class="ovl">Space Saved</div></div>
+  </div>
+  <div class="cimgs">
+    <div class="cic"><canvas id="co1"></canvas>
+      <div class="cicf"><h3>🎨 Original</h3>
+        <div class="cmrow"><span>PSNR</span><span class="tg">∞ dB (Reference)</span></div>
+        <div class="cmrow"><span>SSIM</span><span class="tg">1.000000</span></div>
+        <div class="cmrow"><span>Accuracy</span><span class="tg">100.00%</span></div>
+        <div class="cmrow"><span>MSE</span><span class="tg">0.00</span></div>
+        <div class="cmrow"><span>Size</span><span id="coSz">—</span></div>
+      </div>
+    </div>
+    <div class="cic"><canvas id="co2"></canvas>
+      <div class="cicf"><h3>⚡ Compressed (SVD)</h3>
+        <div class="cmrow"><span>PSNR</span><span class="tc" id="co2p">—</span></div>
+        <div class="cmrow"><span>SSIM</span><span class="tc" id="co2s">—</span></div>
+        <div class="cmrow"><span>Accuracy</span><span class="tc" id="co2a">—</span></div>
+        <div class="cmrow"><span>MSE</span><span class="tc" id="co2m">—</span></div>
+        <div class="cmrow"><span>Size</span><span id="co2Sz">—</span></div>
+      </div>
+    </div>
+    <div class="cic"><canvas id="co3"></canvas>
+      <div class="cicf"><h3>🔄 Restored</h3>
+        <div class="cmrow"><span>PSNR</span><span class="tp" id="co3p">—</span></div>
+        <div class="cmrow"><span>SSIM</span><span class="tp" id="co3s">—</span></div>
+        <div class="cmrow"><span>Accuracy</span><span class="tp" id="co3a">—</span></div>
+        <div class="cmrow"><span>MSE</span><span class="tp" id="co3m">—</span></div>
+        <div class="cmrow"><span>Size</span><span id="co3Sz">—</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="cgrid">
+    <div class="cc"><h3>📈 PSNR Comparison (dB)</h3><div class="cw"><canvas id="ch1"></canvas></div></div>
+    <div class="cc"><h3>📊 SSIM Comparison</h3><div class="cw"><canvas id="ch2"></canvas></div></div>
+    <div class="cc"><h3>🎯 Accuracy % Comparison</h3><div class="cw"><canvas id="ch3"></canvas></div></div>
+    <div class="cc"><h3>💾 File Size Breakdown</h3><div class="cw"><canvas id="ch4"></canvas></div></div>
+  </div>
+  <div class="dlrow">
+    <button class="btn bdl" style="width:auto" onclick="dlImg('orig')">⬇️ Original</button>
+    <button class="btn bdl" style="width:auto" onclick="dlImg('comp')">⬇️ Compressed</button>
+    <button class="btn bp2" style="width:auto;padding:8px 16px;font-size:.82rem" onclick="dlImg('rest')">⬇️ Restored</button>
+  </div>
+</section>
+
+<div class="toast" id="toast"><span id="ticon2">ℹ️</span><span id="tmsg">—</span></div>
+
+<script>
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+const G = {
+  orig:null, compData:null, compImg:null, restImg:null,
+  filter:'none', restore:'residual', quality:50,
+  origFileSize:0,
+  m:{ cPSNR:0,cSSIM:0,cMSE:0,cAcc:0, rPSNR:0,rSSIM:0,rMSE:0,rAcc:0,
+      ratio:1, saved:0, origSz:0, compSz:0 }
+};
+let charts = {};
+
+// ══════════════════════════════════════════════
+// COLOR SPACE: RGB ↔ YCbCr (ITU-R BT.601)
+// ══════════════════════════════════════════════
+function rgbToYcbcr(data, W, H) {
+  const Y=new Float32Array(W*H), Cb=new Float32Array(W*H), Cr=new Float32Array(W*H);
+  for(let i=0;i<W*H;i++){
+    const r=data[i*4],g=data[i*4+1],b=data[i*4+2];
+    Y[i]  =  0.299*r   + 0.587*g   + 0.114*b;
+    Cb[i] = -0.168736*r - 0.331264*g + 0.5*b   + 128;
+    Cr[i] =  0.5*r   - 0.418688*g - 0.081312*b + 128;
+  }
+  return {Y,Cb,Cr};
+}
+function ycbcrToRgb(Y, Cb, Cr, W, H) {
+  const px=new Uint8ClampedArray(W*H*4);
+  for(let i=0;i<W*H;i++){
+    const y=Y[i],cb=Cb[i]-128,cr=Cr[i]-128;
+    px[i*4]   = Math.max(0,Math.min(255,Math.round(y+1.402*cr)));
+    px[i*4+1] = Math.max(0,Math.min(255,Math.round(y-0.344136*cb-0.714136*cr)));
+    px[i*4+2] = Math.max(0,Math.min(255,Math.round(y+1.772*cb)));
+    px[i*4+3] = 255;
+  }
+  return new ImageData(px,W,H);
+}
+
+// ══════════════════════════════════════════════
+// SVD ENGINE — Power Iteration with Deflation
+// ══════════════════════════════════════════════
+function vnorm(v) {
+  let n=0; for(let i=0;i<v.length;i++) n+=v[i]*v[i]; n=Math.sqrt(n);
+  if(n<1e-12) return v;
+  for(let i=0;i<v.length;i++) v[i]/=n; return v;
+}
+function Av(A,v,H,W) {
+  const u=new Float32Array(H);
+  for(let r=0;r<H;r++){let s=0;for(let c=0;c<W;c++) s+=A[r*W+c]*v[c];u[r]=s}
+  return u;
+}
+function ATu(A,u,H,W) {
+  const v=new Float32Array(W);
+  for(let r=0;r<H;r++){const ur=u[r];for(let c=0;c<W;c++) v[c]+=A[r*W+c]*ur}
+  return v;
+}
+
+function svdRankK(channel, W, H, k) {
+  const mat=new Float32Array(channel); // deflated copy
+  const Us=[],Ss=[],Vs=[];
+  for(let i=0;i<k;i++){
+    // Random init v
+    let v=new Float32Array(W);
+    for(let j=0;j<W;j++) v[j]=Math.random()-0.5;
+    vnorm(v);
+    let u=new Float32Array(H);
+    // Power iterations (8 iters gives good convergence for natural images)
+    for(let it=0;it<8;it++){
+      u=Av(mat,v,H,W); vnorm(u);
+      v=ATu(mat,u,H,W); vnorm(v);
+    }
+    // Final unnormalized u = A*v, |u| = sigma
+    u=Av(mat,v,H,W);
+    let sigma=0; for(let j=0;j<H;j++) sigma+=u[j]*u[j]; sigma=Math.sqrt(sigma);
+    if(sigma<0.5) break; // below threshold → stop
+    for(let j=0;j<H;j++) u[j]/=sigma;
+    Us.push(u); Ss.push(sigma); Vs.push(v);
+    // Deflate: mat -= sigma * u ⊗ v
+    for(let r=0;r<H;r++){const usr=u[r]*sigma;for(let c=0;c<W;c++) mat[r*W+c]-=usr*v[c]}
+  }
+  return {Us,Ss,Vs};
+}
+
+function svdRecon(svd, W, H) {
+  const {Us,Ss,Vs}=svd, out=new Float32Array(W*H);
+  for(let i=0;i<Us.length;i++){
+    const s=Ss[i],u=Us[i],v=Vs[i];
+    for(let r=0;r<H;r++){const usr=u[r]*s;for(let c=0;c<W;c++) out[r*W+c]+=usr*v[c]}
+  }
+  return out;
+}
+
+// ══════════════════════════════════════════════
+// QUALITY METRICS (exact)
+// ══════════════════════════════════════════════
+function mse(a,b){
+  const n=a.width*a.height; let m=0;
+  for(let i=0;i<n;i++) for(let c=0;c<3;c++){const d=a.data[i*4+c]-b.data[i*4+c];m+=d*d}
+  return m/(n*3);
+}
+function psnr(m){return m<1e-6?99.99:Math.min(99.99,10*Math.log10(65025/m))}
+function ssim(a,b){
+  const n=a.width*a.height,c1=6.5025,c2=58.5225; let tot=0;
+  for(let ch=0;ch<3;ch++){
+    let sx=0,sy=0;for(let i=0;i<n;i++){sx+=a.data[i*4+ch];sy+=b.data[i*4+ch]}
+    const mx=sx/n,my=sy/n; let vx=0,vy=0,cov=0;
+    for(let i=0;i<n;i++){const dx=a.data[i*4+ch]-mx,dy=b.data[i*4+ch]-my;vx+=dx*dx;vy+=dy*dy;cov+=dx*dy}
+    vx/=n;vy/=n;cov/=n;
+    tot+=((2*mx*my+c1)*(2*cov+c2))/((mx*mx+my*my+c1)*(vx+vy+c2));
+  }
+  return Math.max(0,Math.min(1,tot/3));
+}
+// Composite accuracy = 50% SSIM + 50% Pixel Fidelity (1 - RMSE/255)
+// SSIM captures structural/perceptual quality; RMSE captures pixel-level fidelity
+function accuracy(ssimVal, mseVal) {
+  const rmse = Math.sqrt(Math.max(0, mseVal));
+  const pixFidelity = Math.max(0, 1 - rmse / 255);  // 1 at MSE=0, ~0.935 at MSE=275
+  return (Math.max(0, ssimVal) * 0.5 + pixFidelity * 0.5) * 100;
+}
+
+// ══════════════════════════════════════════════
+// FILTERS (visualization only — never touch G.orig)
+// ══════════════════════════════════════════════
+function convF(id,k,ks,div){
+  const {width:W,height:H,data}=id,out=new Uint8ClampedArray(data),h=Math.floor(ks/2);
+  for(let y=h;y<H-h;y++) for(let x=h;x<W-h;x++){
+    let r=0,g=0,b=0;
+    for(let ky=-h;ky<=h;ky++) for(let kx=-h;kx<=h;kx++){
+      const ki=k[(ky+h)*ks+(kx+h)],idx=((y+ky)*W+(x+kx))*4;
+      r+=data[idx]*ki;g+=data[idx+1]*ki;b+=data[idx+2]*ki;
+    }
+    const i=(y*W+x)*4;
+    out[i]=Math.max(0,Math.min(255,r/div));out[i+1]=Math.max(0,Math.min(255,g/div));out[i+2]=Math.max(0,Math.min(255,b/div));
+  }
+  return new ImageData(out,W,H);
+}
+function fBlur(id){return convF(id,[2,4,5,4,2,4,9,12,9,4,5,12,15,12,5,4,9,12,9,4,2,4,5,4,2],5,115)}
+function fSharpen(id){return convF(id,[0,-1,0,-1,5,-1,0,-1,0],3,1)}
+function fSobel(id){
+  const {width:W,height:H,data}=id,out=new Uint8ClampedArray(data);
+  const Gx=[-1,0,1,-2,0,2,-1,0,1],Gy=[-1,-2,-1,0,0,0,1,2,1];
+  for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){
+    let xR=0,yR=0,xG=0,yG=0,xB=0,yB=0;
+    for(let ky=-1;ky<=1;ky++) for(let kx=-1;kx<=1;kx++){
+      const k=(ky+1)*3+(kx+1),idx=((y+ky)*W+(x+kx))*4;
+      xR+=data[idx]*Gx[k];yR+=data[idx]*Gy[k];xG+=data[idx+1]*Gx[k];yG+=data[idx+1]*Gy[k];xB+=data[idx+2]*Gx[k];yB+=data[idx+2]*Gy[k];
+    }
+    const i=(y*W+x)*4;
+    out[i]=Math.min(255,Math.hypot(xR,yR));out[i+1]=Math.min(255,Math.hypot(xG,yG));out[i+2]=Math.min(255,Math.hypot(xB,yB));out[i+3]=255;
+  }
+  return new ImageData(out,W,H);
+}
+function cloneId(id){return new ImageData(new Uint8ClampedArray(id.data),id.width,id.height)}
+function applyVizFilter(id,f){
+  const c=cloneId(id);
+  if(f==='blur') return fBlur(c);
+  if(f==='sharpen') return fSharpen(c);
+  if(f==='edge') return fSobel(c);
+  return c;
+}
+
+// Post-processing filters for restoration
+
+// Compute per-channel mean & std from raw pixel data
+function computeStats(data, W, H) {
+  const n=W*H, mean=[0,0,0], std=[0,0,0];
+  for(let i=0;i<n;i++) for(let c=0;c<3;c++) mean[c]+=data[i*4+c];
+  for(let c=0;c<3;c++) mean[c]/=n;
+  for(let i=0;i<n;i++) for(let c=0;c<3;c++){const d=data[i*4+c]-mean[c];std[c]+=d*d}
+  for(let c=0;c<3;c++) std[c]=Math.sqrt(std[c]/n);
+  return {mean,std};
+}
+
+// Histogram Matching — rescales compressed pixel distribution to match original stats
+// SVD truncation compresses the histogram (reduces std, may shift mean slightly).
+// Correcting this GENUINELY improves both PSNR and SSIM vs the compressed image.
+function statCorrect(id, origStats) {
+  const {width:W,height:H,data}=id, out=new Uint8ClampedArray(data);
+  const cs=computeStats(data,W,H);
+  for(let i=0;i<W*H;i++) for(let c=0;c<3;c++){
+    const sigma_c = cs.std[c] > 0.5 ? cs.std[c] : 1;
+    const norm = (data[i*4+c] - cs.mean[c]) / sigma_c;
+    out[i*4+c] = Math.max(0, Math.min(255, Math.round(norm * origStats.std[c] + origStats.mean[c])));
+  }
+  return new ImageData(out,W,H);
+}
+
+// Unsharp Mask — recovers fine edge details lost due to SVD rank truncation
+function unsharpMask(id, strength=0.4) {
+  const blurred=fBlur(id);
+  const {width:W,height:H,data}=id, bd=blurred.data, out=new Uint8ClampedArray(data);
+  for(let i=0;i<W*H;i++) for(let c=0;c<3;c++){
+    out[i*4+c]=Math.max(0,Math.min(255,Math.round(data[i*4+c]+strength*(data[i*4+c]-bd[i*4+c]))));
+  }
+  return new ImageData(out,W,H);
+}
+
+// ══════════════════════════════
+// RESIDUAL SVD — Progressive Refinement
+// Encode reconstruction error E = Original − Compressed using another SVD.
+// At receiver: Restored = Compressed + SVD_approx(E) → recovers lost detail.
+// ══════════════════════════════
+function compressResidual(orig, compressed, k_res, W, H) {
+  // Work in YCbCr — better energy compaction for the error signal
+  const {Y:Yo,Cb:Cbo,Cr:Cro}=rgbToYcbcr(orig.data,W,H);
+  const {Y:Yc,Cb:Cbc,Cr:Crc}=rgbToYcbcr(compressed.data,W,H);
+  const Ey=new Float32Array(W*H),ECb=new Float32Array(W*H),ECr=new Float32Array(W*H);
+  for(let i=0;i<W*H;i++){Ey[i]=Yo[i]-Yc[i];ECb[i]=Cbo[i]-Cbc[i];ECr[i]=Cro[i]-Crc[i];}
+  const k_c=Math.max(1,Math.round(k_res/2));
+  const svdEy=svdRankK(Ey,W,H,k_res);
+  const svdECb=svdRankK(ECb,W,H,k_c);
+  const svdECr=svdRankK(ECr,W,H,k_c);
+  // Compute what fraction of error energy is captured
+  let totE=0,capE=0;
+  for(let i=0;i<W*H;i++) totE+=Ey[i]*Ey[i];
+  for(let i=0;i<svdEy.Ss.length;i++) capE+=svdEy.Ss[i]*svdEy.Ss[i];
+  const energyCaptured=totE>0?Math.min(1,capE/totE):0;
+  return {svdEy,svdECb,svdECr,energyCaptured};
+}
+
+function applyResidual(compressed, residual, W, H, origStats) {
+  const {svdEy,svdECb,svdECr}=residual;
+  // Reconstruct the error channels
+  const Ey=svdRecon(svdEy,W,H),ECb=svdRecon(svdECb,W,H),ECr=svdRecon(svdECr,W,H);
+  // Decompose compressed into YCbCr
+  const {Y:Yc,Cb:Cbc,Cr:Crc}=rgbToYcbcr(compressed.data,W,H);
+  const Yr=new Float32Array(W*H),Cbr=new Float32Array(W*H),Crr=new Float32Array(W*H);
+  for(let i=0;i<W*H;i++){
+    Yr[i]=Math.max(0,Math.min(255,Yc[i]+Ey[i]));
+    Cbr[i]=Math.max(0,Math.min(255,Cbc[i]+ECb[i]));
+    Crr[i]=Math.max(0,Math.min(255,Crc[i]+ECr[i]));
+  }
+  const res=ycbcrToRgb(Yr,Cbr,Crr,W,H);
+  // Apply histogram correction on top for maximum quality
+  return origStats ? statCorrect(res,origStats) : res;
+}
+
+// ══════════════════════════════════════════════
+// CANVAS HELPERS
+// ══════════════════════════════════════════════
+function draw(cvs,id){cvs.width=id.width;cvs.height=id.height;cvs.getContext('2d').putImageData(id,0,0)}
+function cpCvs(src,dst){dst.width=src.width;dst.height=src.height;dst.getContext('2d').drawImage(src,0,0)}
+function fmtB(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(2)+' MB'}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+
+function qlabel(p){
+  if(p>=40)return'<span class="qlabel ql-ex">Excellent ≥40dB</span>';
+  if(p>=35)return'<span class="qlabel ql-gd">Good 35–40dB</span>';
+  if(p>=30)return'<span class="qlabel ql-fr">Fair 30–35dB</span>';
+  return'<span class="qlabel ql-pr">Poor &lt;30dB</span>';
+}
+function slabel(s){
+  if(s>=.95)return'<span class="qlabel ql-ex">Excellent ≥0.95</span>';
+  if(s>=.85)return'<span class="qlabel ql-gd">Good 0.85–0.95</span>';
+  if(s>=.70)return'<span class="qlabel ql-fr">Fair 0.70–0.85</span>';
+  return'<span class="qlabel ql-pr">Poor &lt;0.70</span>';
+}
+
+// ══════════════════════════════════════════════
+// STATUS HELPERS
+// ══════════════════════════════════════════════
+function setSt(id,cls,txt){const e=document.getElementById(id);if(e){e.className='sst '+cls;e.textContent=txt}}
+function setStep(el,type){const e=document.getElementById(el);if(!e)return;e.classList.remove('active','done');if(type==='active')e.classList.add('active');else if(type==='done')e.classList.add('done')}
+
+// ══════════════════════════════════════════════
+// UPLOAD
+// ══════════════════════════════════════════════
+const dropZ=document.getElementById('dropZ');
+dropZ.addEventListener('dragover',e=>{e.preventDefault();dropZ.classList.add('over')});
+dropZ.addEventListener('dragleave',()=>dropZ.classList.remove('over'));
+dropZ.addEventListener('drop',e=>{e.preventDefault();dropZ.classList.remove('over');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))loadFile(f)});
+document.getElementById('fileIn').addEventListener('change',e=>{if(e.target.files[0])loadFile(e.target.files[0])});
+
+function loadFile(file){
+  const rd=new FileReader();
+  rd.onload=e2=>{
+    const img=new Image();
+    img.onload=()=>{
+      const mx=512,w=img.width,h=img.height;
+      let nw=w,nh=h;
+      if(w>mx||h>mx){const rat=Math.min(mx/w,mx/h);nw=Math.round(w*rat);nh=Math.round(h*rat)}
+      const oc=document.createElement('canvas');oc.width=nw;oc.height=nh;
+      oc.getContext('2d').drawImage(img,0,0,nw,nh);
+      G.orig=oc.getContext('2d').getImageData(0,0,nw,nh);
+      G.origFileSize=file.size;
+      G.m.origSz=nw*nh*3;
+      draw(document.getElementById('origCvs'),G.orig);
+      document.getElementById('oDim').textContent=nw+'×'+nh;
+      document.getElementById('oRaw').textContent=fmtB(nw*nh*3)+' raw';
+      document.getElementById('oFile').textContent=fmtB(file.size);
+      document.getElementById('origPrev').classList.remove('hidden');
+      setSt('st1','sd','✓ Loaded');setStep('s1','done');
+      setStep('s2','active');setSt('st2','sa','● Ready');
+      document.getElementById('scanBtn').disabled=false;
+      document.getElementById('compBtn').disabled=false;
+      applyVizShow();
+      toast('tok','✅ Image loaded! SVD will use the original (filters are preview only).');
+    };img.src=e2.target.result;
+  };rd.readAsDataURL(file);
+}
+
+// ══════════════════════════════════════════════
+// FILTER (VISUALIZATION ONLY)
+// ══════════════════════════════════════════════
+function pickFilt(btn){
+  document.querySelectorAll('.sp .fb').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');G.filter=btn.dataset.f;
+  if(G.orig) applyVizShow();
+}
+function applyVizShow(){
+  const viz=applyVizFilter(G.orig,G.filter);
+  draw(document.getElementById('filtCvs'),viz);
+  document.getElementById('filtPrev').classList.remove('hidden');
+  const names={none:'Original (no filter)',blur:'Gaussian Blur Preview',sharpen:'Sharpen Preview',edge:'Edge Detection Preview'};
+  document.getElementById('filtTag').textContent=names[G.filter]||G.filter;
+  setSt('st2','sd','✓ Shown');setStep('s2','done');
+}
+function pickRestore(btn){
+  document.querySelectorAll('.rp .fb').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');G.restore=btn.dataset.r;
+}
+function onQ(el){G.quality=+el.value;document.getElementById('qval').textContent=G.quality+'%'}
+
+// ══════════════════════════════════════════════
+// SCAN ANIMATION
+// ══════════════════════════════════════════════
+async function doScan(){
+  if(!G.orig) return;
+  const sc=document.getElementById('scanCvs'),ctx=sc.getContext('2d');
+  const src=G.orig;sc.width=src.width;sc.height=src.height;
+  document.getElementById('scanW').classList.remove('hidden');
+  document.getElementById('alog').classList.remove('hidden');
+  document.getElementById('alog').innerHTML='';
+  setSt('st3','sa','● Scanning');setStep('s3','active');
+  document.getElementById('scanBtn').disabled=true;
+  const {width:W,height:H,data}=src;
+  function log(m){const d=document.createElement('div');d.textContent=m;document.getElementById('alog').appendChild(d);document.getElementById('alog').scrollTop=9999}
+  log('> Initializing SVD image scanner…');await sleep(180);
+  log(`> Image: ${W}×${H} (${(W*H/1000).toFixed(0)}K pixels)`);await sleep(130);
+  log('> Computing pixel entropy & edge density…');
+  let ent=0,edg=0;
+  const steps=22;
+  for(let s=0;s<steps;s++){
+    const y0=Math.floor(s/steps*H),y1=Math.floor((s+1)/steps*H);
+    ctx.putImageData(src,0,0);
+    if(y0>0){const id2=ctx.getImageData(0,0,W,y0);for(let i=0;i<id2.data.length;i+=4)id2.data[i+2]=Math.min(255,id2.data[i+2]+20);ctx.putImageData(id2,0,0)}
+    const gr=ctx.createLinearGradient(0,y0-3,0,y0+3);gr.addColorStop(0,'transparent');gr.addColorStop(.5,'rgba(0,212,255,.9)');gr.addColorStop(1,'transparent');
+    ctx.fillStyle=gr;ctx.fillRect(0,y0-3,W,6);
+    ctx.strokeStyle='rgba(0,212,255,.95)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(0,y0);ctx.lineTo(W,y0);ctx.stroke();
+    for(let y=y0;y<y1;y++) for(let x=0;x<W;x++){
+      const i=(y*W+x)*4,l=(data[i]+data[i+1]+data[i+2])/765;
+      if(l>0&&l<1)ent-=l*Math.log2(l)+(1-l)*Math.log2(1-l);
+      if(x>0&&y>0){const p=(data[i]+data[i+1]+data[i+2])/3,q=(data[i-4]+data[i-3]+data[i-2])/3;if(Math.abs(p-q)>28)edg++}
+    }
+    await sleep(50);
+  }
+  ctx.putImageData(src,0,0);
+  const ne=(ent/(W*H)).toFixed(3),ep=((edg/(W*H))*100).toFixed(2);
+  const k=Math.max(2,Math.min(Math.floor(Math.min(W,H)*0.5),Math.round(G.quality/100*65)));
+  log(`> Entropy: ${ne} bits/pixel`);await sleep(90);
+  log(`> Edge density: ${ep}%`);await sleep(90);
+  log(`> Complexity: ${edg/(W*H)>.05?'HIGH':edg/(W*H)>.02?'MEDIUM':'LOW'}`);await sleep(90);
+  log(`> SVD luma rank k=${k}, chroma k=${Math.max(1,Math.round(k*.5))}`);await sleep(90);
+  log('> ✓ Scan complete. Starting SVD compression…');
+  setSt('st3','sd','✓ Done');setStep('s3','done');setStep('s4','active');setSt('st4','sa','● Ready');
+  document.getElementById('scanBtn').disabled=false;
+  toast('tok','🔍 Scan complete!');
+}
+
+// ══════════════════════════════════════════════
+// COMPRESSION (SVD + YCbCr)
+// ══════════════════════════════════════════════
+async function doCompress(){
+  if(!G.orig) return;
+  const btn=document.getElementById('compBtn');
+  btn.innerHTML='<div class="spinner"></div> SVD Luma…';btn.disabled=true;
+  setSt('st4','sa','● Compressing');await sleep(30);
+
+  const {width:W,height:H}=G.orig;
+  const k=Math.max(2,Math.min(Math.floor(Math.min(W,H)*0.5),Math.round(G.quality/100*65)));
+  const kC=Math.max(1,Math.round(k*0.5));
+
+  // Convert original to YCbCr — compression ALWAYS uses original, never filtered
+  const {Y,Cb,Cr}=rgbToYcbcr(G.orig.data,W,H);
+
+  const t0=performance.now();
+  const svdY=svdRankK(Y,W,H,k);
+  btn.innerHTML='<div class="spinner"></div> SVD Chroma…';await sleep(10);
+  const svdCb=svdRankK(Cb,W,H,kC);
+  const svdCr=svdRankK(Cr,W,H,kC);
+  const dt=((performance.now()-t0)/1000).toFixed(2);
+
+  // Reconstruct
+  const Yr=svdRecon(svdY,W,H),Cbr=svdRecon(svdCb,W,H),Crr=svdRecon(svdCr,W,H);
+  for(let i=0;i<W*H;i++){Yr[i]=Math.max(0,Math.min(255,Yr[i]));Cbr[i]=Math.max(0,Math.min(255,Cbr[i]));Crr[i]=Math.max(0,Math.min(255,Crr[i]))}
+  const compImg=ycbcrToRgb(Yr,Cbr,Crr,W,H);
+
+  G.compImg=compImg;
+
+  // ── Residual SVD: encode reconstruction error for progressive refinement ──
+  btn.innerHTML='<div class="spinner"></div> Residual SVD…';await sleep(10);
+  const k_res=Math.max(3,Math.round(k/3));
+  const residual=compressResidual(G.orig,compImg,k_res,W,H);
+
+  // Store metadata (original stats + residual SVD) in compressed payload
+  const origStats=computeStats(G.orig.data,W,H);
+  G.compData={svdY,svdCb,svdCr,W,H,k,kC,residual,origStats};
+
+  // Total compressed size = main SVD + residual SVD
+  const kAY=svdY.Us.length,kAC=svdCb.Us.length;
+  const kRY=residual.svdEy.Us.length,kRC=residual.svdECb.Us.length;
+  const compSz=(kAY*(H+W+1)+2*kAC*(H+W+1)+kRY*(H+W+1)+2*kRC*(H+W+1))*4;
+  const origSz=W*H*3;
+  G.m.origSz=origSz;G.m.compSz=compSz;
+
+  const m=mse(G.orig,compImg);
+  const p=psnr(m);
+  const s_=ssim(G.orig,compImg);
+  const acc=accuracy(s_,m);
+  const ratio=origSz/compSz,saved=(1-compSz/origSz)*100;
+
+  G.m.cPSNR=p;G.m.cSSIM=s_;G.m.cMSE=m;G.m.cAcc=acc;G.m.ratio=ratio;G.m.saved=saved;
+
+  draw(document.getElementById('compCvs'),compImg);
+  el('cSzTag').textContent=fmtB(compSz);
+  el('cRatTag').textContent=ratio.toFixed(1)+'×';
+  el('cPsnrTag').textContent='PSNR '+p.toFixed(2)+'dB';
+  el('cPSNR').textContent=p.toFixed(2);
+  el('cSSIM').textContent=s_.toFixed(6);
+  el('cAcc').textContent=acc.toFixed(2)+'%';
+  el('cMSE').textContent=m.toFixed(2);
+  el('cRatio').textContent=ratio.toFixed(2)+'×';
+  el('cSaved').textContent=saved.toFixed(2)+'%';
+  el('cRank').textContent='Y:'+kAY+' / C:'+kAC;
+  el('cpql').innerHTML=qlabel(p);
+  el('csql').innerHTML=slabel(s_);
+  el('compTime').textContent=dt+' s';
+
+  drawSpectrum(svdY);
+
+  el('compPrev').classList.remove('hidden');
+  setSt('st4','sd','✓ Done');setStep('s4','done');setStep('s5','active');setSt('st5','sa','● Ready');
+  btn.innerHTML='⚡ Re-compress';btn.disabled=false;
+  el('sendBtn').disabled=false;
+  toast('tok',`✅ PSNR: ${p.toFixed(2)}dB · SSIM: ${s_.toFixed(4)} · Accuracy: ${acc.toFixed(2)}%`);
+}
+
+// ══════════════════════════════════════════════
+// SINGULAR VALUE SPECTRUM
+// ══════════════════════════════════════════════
+function drawSpectrum(svd){
+  const cvs=document.getElementById('specCvs'),ctx=cvs.getContext('2d');
+  const W=cvs.offsetWidth||380,H=75;cvs.width=W;cvs.height=H;
+  ctx.fillStyle='rgba(0,0,0,.4)';ctx.fillRect(0,0,W,H);
+  const sv=svd.Ss,maxS=Math.max(...sv,1),bw=W/sv.length;
+  for(let i=0;i<sv.length;i++){
+    const bh=(sv[i]/maxS)*(H-8),pct=i/sv.length,hue=190+pct*70;
+    ctx.fillStyle=`hsla(${hue},80%,60%,${.9-pct*.5})`;
+    ctx.fillRect(i*bw,H-bh,Math.max(1,bw-1),bh);
+  }
+  // Cumulative energy line
+  let totE=0;for(let i=0;i<sv.length;i++)totE+=sv[i]*sv[i];
+  ctx.strokeStyle='rgba(255,220,0,.85)';ctx.lineWidth=1.5;ctx.beginPath();
+  let cumE=0;
+  for(let i=0;i<sv.length;i++){cumE+=sv[i]*sv[i];const x=(i+.5)*bw,y=H-(cumE/totE)*(H-8);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}
+  ctx.stroke();
+  ctx.fillStyle='rgba(200,200,200,.5)';ctx.font='9px JetBrains Mono,monospace';
+  ctx.fillText(`σ₁=${sv[0]?.toFixed(0)||'—'}`,2,H-2);
+  ctx.fillStyle='rgba(255,220,0,.8)';ctx.fillText('— Cumul. energy',W-110,10);
+}
+
+// ══════════════════════════════════════════════
+// SEND
+// ══════════════════════════════════════════════
+async function doSend(){
+  if(!G.compData) return;
+  const btn=el('sendBtn');btn.innerHTML='<div class="spinner"></div> Sending…';btn.disabled=true;
+  setSt('st5','sa','● Sending');
+  el('sp1').classList.add('on');el('sp2').classList.add('on');
+  el('ticon').classList.add('spin');
+  const bar=el('txBar');
+  for(let i=0;i<=100;i+=3){bar.style.width=i+'%';await sleep(25)}
+  el('ticon').classList.remove('spin');el('ticon').textContent='✅';
+  setTimeout(()=>{el('sp1').classList.remove('on');el('sp2').classList.remove('on');el('ticon').textContent='📡'},3000);
+  setSt('st5','sd','✓ Sent');setStep('s5','done');
+  btn.innerHTML='📡 Re-send →';btn.disabled=false;
+  populateRx();toast('tok','✅ Data transmitted!');
+}
+function populateRx(){
+  draw(el('rxCvs'),G.compImg);
+  el('rxSzTag').textContent=fmtB(G.m.compSz);
+  el('rxRatTag').textContent=G.m.ratio.toFixed(1)+'×';
+  el('rxPSNR').textContent=G.m.cPSNR.toFixed(2);
+  el('rxSSIM').textContent=G.m.cSSIM.toFixed(6);
+  el('rxAcc').textContent=G.m.cAcc.toFixed(2)+'%';
+  el('rxMSE').textContent=G.m.cMSE.toFixed(2);
+  el('rxRatio').textContent=G.m.ratio.toFixed(2)+'×';
+  el('rxpql').innerHTML=qlabel(G.m.cPSNR);
+  el('rxsql').innerHTML=slabel(G.m.cSSIM);
+  el('rxPrev').classList.remove('hidden');
+  el('rxW').classList.add('hidden');
+  setSt('rst1','sd','✓ Received');setStep('r1','done');setStep('r2','active');setSt('rst2','sa','● Ready');
+  el('restBtn').disabled=false;
+}
+
+// ══════════════════════════════════════════════
+// RESTORATION
+// ══════════════════════════════════════════════
+async function doRestore(){
+  if(!G.compImg) return;
+  const btn=el('restBtn');btn.innerHTML='<div class="spinner"></div> Restoring…';btn.disabled=true;
+  setSt('rst2','sa','● Restoring');await sleep(40);
+  let res=cloneId(G.compImg);
+  const origStats=G.compData?.origStats;
+  const residual=G.compData?.residual;
+  const {W,H}=G.compData;
+
+  if(G.restore==='histmatch') {
+    // Global distribution correction only
+    if(origStats) res=statCorrect(res,origStats);
+  } else if(G.restore==='residual') {
+    // Progressive SVD: add back encoded reconstruction error (biggest PSNR/SSIM gain)
+    if(residual) res=applyResidual(res,residual,W,H,origStats);
+    else if(origStats) res=statCorrect(res,origStats);
+  } else if(G.restore==='full') {
+    // Best quality: residual correction + mild sharpening for edge crispness
+    if(residual) res=applyResidual(res,residual,W,H,origStats);
+    else if(origStats) res=statCorrect(res,origStats);
+    res=unsharpMask(res,0.3);
+  }
+
+  G.restImg=res;
+  const m_=mse(G.orig,res),p_=psnr(m_),s_=ssim(G.orig,res),acc=accuracy(s_,m_);
+  const recovery=G.m.cMSE>0?Math.max(0,(1-m_/G.m.cMSE)*100):0;
+  const pg=p_-G.m.cPSNR,sg=s_-G.m.cSSIM,ag=acc-G.m.cAcc;
+  G.m.rPSNR=p_;G.m.rSSIM=s_;G.m.rMSE=m_;G.m.rAcc=acc;
+  draw(el('restCvs'),res);
+  el('rPSNR').textContent=p_.toFixed(2);
+  el('rSSIM').textContent=s_.toFixed(6);
+  el('rAcc').textContent=acc.toFixed(2)+'%';
+  el('rMSE').textContent=m_.toFixed(2);
+  el('rPg').textContent=(pg>=0?'+':'')+pg.toFixed(2)+' dB';
+  el('rSg').textContent=(sg>=0?'+':'')+sg.toFixed(6);
+  el('rAg').textContent=(ag>=0?'+':'')+ag.toFixed(2)+'%';
+  el('rpql').innerHTML=qlabel(p_);
+  el('rsql').innerHTML=slabel(s_);
+  el('restPrev').classList.remove('hidden');
+  setSt('rst2','sd','✓ Restored');setStep('r2','done');setStep('r3','active');setSt('rst3','sa','● Ready');
+  btn.innerHTML='🔄 Re-restore';btn.disabled=false;
+  el('cmpBtn').disabled=false;
+  el('rRecovery').textContent=recovery.toFixed(1)+'%';
+  toast('tok',`✅ PSNR: ${p_.toFixed(2)}dB · Accuracy: ${acc.toFixed(2)}% · Error Recovered: ${recovery.toFixed(1)}%`);
+}
+
+// ══════════════════════════════════════════════
+// COMPARISON + CHARTS
+// ══════════════════════════════════════════════
+function showCmp(){
+  const sec=el('cmpSec');sec.classList.add('show');sec.scrollIntoView({behavior:'smooth'});
+  cpCvs(el('origCvs'),el('co1'));
+  cpCvs(el('compCvs'),el('co2'));
+  cpCvs(el('restCvs'),el('co3'));
+  const m=G.m;
+  el('ov1').textContent=m.cPSNR.toFixed(2);
+  el('ov2').textContent=m.rPSNR.toFixed(2);
+  el('ov3').textContent=m.ratio.toFixed(2)+'×';
+  el('ov4').textContent=m.saved.toFixed(1)+'%';
+  el('coSz').textContent=fmtB(m.origSz);
+  el('co2p').textContent=m.cPSNR.toFixed(2)+' dB';
+  el('co2s').textContent=m.cSSIM.toFixed(6);
+  el('co2a').textContent=m.cAcc.toFixed(2)+'%';
+  el('co2m').textContent=m.cMSE.toFixed(2);
+  el('co2Sz').textContent=fmtB(m.compSz);
+  el('co3p').textContent=m.rPSNR.toFixed(2)+' dB';
+  el('co3s').textContent=m.rSSIM.toFixed(6);
+  el('co3a').textContent=m.rAcc.toFixed(2)+'%';
+  el('co3m').textContent=m.rMSE.toFixed(2);
+  el('co3Sz').textContent=fmtB(m.compSz)+' (same)';
+  setSt('rst3','sd','✓ Done');setStep('r3','done');
+  renderCharts();
+}
+function renderCharts(){
+  const m=G.m;
+  Object.values(charts).forEach(c=>c.destroy());charts={};
+  const base={responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#ccd6f6',font:{family:'Outfit'}}}},
+    scales:{x:{ticks:{color:'#8892b0'},grid:{color:'rgba(255,255,255,.05)'}},y:{ticks:{color:'#8892b0'},grid:{color:'rgba(255,255,255,.05)'}}}};
+  const labels=['Original','Compressed','Restored'];
+  const colors={bg:['rgba(34,197,94,.6)','rgba(0,212,255,.6)','rgba(168,85,247,.6)'],bd:['#22c55e','#00d4ff','#a855f7']};
+  charts.p=new Chart(el('ch1'),{type:'bar',data:{labels,datasets:[{label:'PSNR (dB)',data:[99,m.cPSNR,m.rPSNR],backgroundColor:colors.bg,borderColor:colors.bd,borderWidth:2,borderRadius:6}]},
+    options:{...base,plugins:{...base.plugins,tooltip:{callbacks:{label:c=>` ${c.parsed.y>=99?'∞':c.parsed.y.toFixed(2)} dB`}}},
+    scales:{...base.scales,y:{...base.scales.y,min:0,max:100,title:{display:true,text:'PSNR (dB)',color:'#8892b0'}}}}});
+  charts.s=new Chart(el('ch2'),{type:'bar',data:{labels,datasets:[{label:'SSIM',data:[1,m.cSSIM,m.rSSIM],backgroundColor:colors.bg,borderColor:colors.bd,borderWidth:2,borderRadius:6}]},
+    options:{...base,scales:{...base.scales,y:{...base.scales.y,min:0,max:1,title:{display:true,text:'SSIM',color:'#8892b0'}}}}});
+  charts.a=new Chart(el('ch3'),{type:'bar',data:{labels,datasets:[{label:'Accuracy %',data:[100,m.cAcc,m.rAcc],backgroundColor:colors.bg,borderColor:colors.bd,borderWidth:2,borderRadius:6}]},
+    options:{...base,scales:{...base.scales,y:{...base.scales.y,min:0,max:100,title:{display:true,text:'Accuracy %',color:'#8892b0'}}}}});
+  charts.d=new Chart(el('ch4'),{type:'doughnut',data:{labels:['Compressed Data','Removed Data'],datasets:[{data:[m.compSz,m.origSz-m.compSz],backgroundColor:['rgba(0,212,255,.7)','rgba(239,68,68,.35)'],borderColor:['#00d4ff','rgba(239,68,68,.6)'],borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{labels:{color:'#ccd6f6',font:{family:'Outfit'}}},tooltip:{callbacks:{label:c=>` ${fmtB(c.parsed)}`}}}}});
+}
+
+// ══════════════════════════════════════════════
+// DOWNLOAD
+// ══════════════════════════════════════════════
+function dlImg(type){
+  const map={orig:'origCvs',comp:'compCvs',rest:'restCvs'};
+  const names={orig:'original.png',comp:'compressed_svd_q'+G.quality+'.png',rest:'restored.png'};
+  const cvs=el(map[type]);if(!cvs){toast('terr','❌ No image');return}
+  const a=document.createElement('a');a.download=names[type];a.href=cvs.toDataURL('image/png');a.click();
+  toast('tok','⬇️ Downloading '+names[type]);
+}
+
+// ══════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════
+function el(id){return document.getElementById(id)}
+let _tt;
+function toast(cls,msg){
+  const t=el('toast');el('tmsg').textContent=msg;t.className='toast '+cls+' show';
+  clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),4000);
+}
+</script>
+</body>
+</html>
